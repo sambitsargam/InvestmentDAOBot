@@ -481,23 +481,30 @@ Submitted At: ${data.created_at}`;
   bot.sendMessage(msg.chat.id, detailMessage);
 });
 
-// Handle free-form messages that mention the bot in any chat.
-bot.on('message', async (msg) => {
-  // Ignore commands (which start with /)
-  if (msg.text.startsWith('/')) return;
+bot.on('text', async (msg) => {
+  const text = msg.text;
+  if (text.startsWith('/')) return; // ignore commands
+  console.log("Received message:", text);
 
-  // Check if the bot is mentioned
   const entities = msg.entities || [];
-  const isMentioned = entities.some(entity => entity.type === 'mention');
-  if (!isMentioned) return;
+  const botMention = entities.find(e => e.type === 'mention');
+
+  // Get the bot's username (from BotInfo)
+  const me = await bot.getMe();
+  const botUsername = `@${me.username}`;
+
+  // Only proceed if the bot was mentioned
+  if (!botMention || !text.includes(botUsername)) return;
 
   const chatId = msg.chat.id;
-  const messageText = msg.text;
-  console.log("Received direct query:", messageText);
-  const intentData = await intentRecognitionAgent(messageText);
+  console.log("Received direct query:", text);
+
+  // Process the natural language query
+  const intentData = await intentRecognitionAgent(text);
   const intent = intentData.intent || "other";
-  const queryText = intentData.query || messageText;
+  const queryText = intentData.query || text;
   let responseText = "";
+
   if (intent === "search_query") {
     responseText = `I recognized a search query. Here are the simulated top results for "${queryText}".`;
   } else if (intent === "investment_query") {
@@ -519,8 +526,10 @@ bot.on('message', async (msg) => {
   } else {
     responseText = `Let me look that up for you: ${queryText}`;
   }
+
   bot.sendMessage(chatId, responseText);
 });
+
 
 // --- End of Bot Handlers ---
 // Log that the bot has started.
